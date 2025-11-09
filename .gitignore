@@ -1,0 +1,131 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-wheel-metadata/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+env.bak/
+venv.bak/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.hypothesis/
+.pytest_cache/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# If you collect static into a folder named "staticfiles" or similar, ignore it.
+# Keep your source `static/` in repo; ignore only built/collected assets.
+
+# Django migration caches
+*/migrations/__pycache__/
+
+# Environment and secret files
+.env
+.env.*
+secrets.json
+instance/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# NLP / ML / model caches and artifacts
+# NLTK data (if stored locally in project)
+nltk_data/
+.nltk_data/
+
+# spaCy models saved in project folders
+*/en_core_web_* 
+*/xx_ent_wiki_sm*
+
+# Hugging Face / transformers caches (project-level)
+.cache/
+huggingface/
+transformers_cache/
+
+# Gensim / FastText / model files
+*.model
+*.vec
+*.bin
+
+# Local model directories (avoid committing large model artifacts)
+models/
+models/*
+
+# PyTorch / TensorFlow saved artifacts
+*.pt
+*.pth
+saved_model/
+
+# Logs and temp
+logs/
+*.log
+tmp/
+temp/
+
+# Docker / Compose
+docker-compose.override.yml
+
+# Misc
+*.pem
+*.key
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
