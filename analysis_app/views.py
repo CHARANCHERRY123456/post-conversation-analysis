@@ -44,7 +44,9 @@ def analyse_chat(request, conversation_id):
     if not user_messages or not ai_messages:
         return Response({"error": "Insufficient data for analysis"}, status=status.HTTP_400_BAD_REQUEST)
     
-    pairs = zip([msg["message"] for msg in user_messages], [msg["message"] for msg in ai_messages])
+    # Convert pairs to list so it can be reused across multiple function calls
+    pairs = list(zip([msg["message"] for msg in user_messages], [msg["message"] for msg in ai_messages]))
+    
     sentement_count , sentiment = analyze_sentiment(user_messages)
     relevance_score , relevance_label = compute_relavance_score(pairs)
     clarity_score , clarity_label = compute_clarity(ai_messages)

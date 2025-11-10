@@ -99,22 +99,29 @@ def compute_completeness(pairs):
         similarity = 1 - cosine(user_emb , ai_emb)
         return similarity
     def deapth_ratio(user_text, ai_text):
-        user_sentences = len(nlp(user_text).sents)
-        ai_sentences = len(nlp(ai_text).sents)
+        user_sentences = len(list(nlp(user_text).sents))
+        ai_sentences = len(list(nlp(ai_text).sents))
         if user_sentences == 0:
             return 0.0
         ratio = ai_sentences / user_sentences
         return min(ratio, 1.0)
-    if not pairs:
+    
+    # Convert pairs to list if it's an iterator
+    pairs_list = list(pairs) if not isinstance(pairs, list) else pairs
+    
+    if not pairs_list:
         return 0.0 , "incomplete"
     
     completeness_scores = []
-    for umsg , aimsg in pairs:
+    for umsg , aimsg in pairs_list:
         kp_coverage = keypoint_coverage(umsg, aimsg)
         sem_relavance = semantic_relavance(umsg, aimsg)
         depth_rat = deapth_ratio(umsg, aimsg)
         combined_score = (0.4 * kp_coverage) + (0.4 * sem_relavance) + (0.2 * depth_rat)
         completeness_scores.append(combined_score)
+    
+    if not completeness_scores:
+        return 0.0, "incomplete"
     
     avg_completeness = sum(completeness_scores) / len(completeness_scores)
     label = "incomplete"
