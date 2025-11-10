@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from rest_framework import status
+from .utils import analyze_sentiment , compute_relavance_score,compute_clarity
 from .models import Conversation , Message
 import json
 from .serializers import ConversationUploadSerializer , ConversationSerializer
@@ -26,3 +28,30 @@ def upload_json(req):
         return Response(serializer.errors , status=400)
     return Response({"error":"Invalid request method"} , status=405)
     
+@api_view(['GET' , 'POST'])
+def analyse_chat(request, conversation_id):
+    try:
+        conversation = Conversation.objects.get(id=conversation_id)
+    except Conversation.DoesNotExist:
+        return Response({"error": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    messages = Message.objects.filter(conversation_id=conversation.id).values("sender", "message", "timestamp")
+    messages_list = list([message for message in messages if message['message'].strip() != ""])
+    user_messages = [msg for msg in messages_list if msg['sender'] == 'user']
+    ai_messages = [msg for msg in messages_list if msg['sender'] == 'ai']
+
+    if not user_messages or not ai_messages:
+        return Response({"error": "Insufficient data for analysis"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    sentement_count , sentiment = analyze_sentiment(user_messages)
+    relevance_score , relevance_label = compute_relavance_score(zip([msg["message"] for msg in user_messages], [msg["message"] for msg in ai_messages]))
+    clarity_score , clarity_label = compute_clarity(ai_messages)
+
+    return Response({
+        "sentiment_score" : sentement_count,
+        "sentiment_label" : sentiment,
+        "relevance_score" : relevance_score,
+        "relavance_label" : relevance_label,
+        "clarity_score" : clarity_score,
+        "clarity_label" : clarity_label
+    })
