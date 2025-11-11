@@ -1,3 +1,4 @@
+# All imports at the top
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
 from transformers import pipeline
@@ -29,7 +30,7 @@ def compute_relavance_score(pairs):
         similarity = 1 - cosine(umsg_emb , aimsg_emb)
         similarities.append(similarity)
     if not similarities:
-        return 0
+        return 0.0, "low"
     avg_similarity = sum(similarities) / len(similarities)
     label = "low"
     if avg_similarity > 0.7:
@@ -184,3 +185,70 @@ def compute_user_satisfaction(pairs):
     score = result["scores"][0]
     lbl = "high" if score >= 0.75 else "medium" if score >= 0.45 else "low"
     return round(score, 3), lbl
+
+# Utility to compute all analytics for a conversation
+def get_conversation_analysis(conversation):
+    from .models import Message
+    from .gemini_utils import compute_accuracy_score
+    from .empathy_utils import compute_empathy_score
+    
+    messages = Message.objects.filter(conversation=conversation).values("sender", "message", "timestamp")
+    messages_list = [message for message in messages if message['message'].strip() != ""]
+    user_messages = [msg for msg in messages_list if msg['sender'] == 'user']
+    ai_messages = [msg for msg in messages_list if msg['sender'] == 'ai']
+    
+    if not user_messages or not ai_messages:
+        return None, {"error": "Insufficient data for analysis"}
+    
+    pairs = list(zip([msg["message"] for msg in user_messages], [msg["message"] for msg in ai_messages]))
+    sentement_count, sentiment = analyze_sentiment(user_messages)
+    relevance_score, relevance_label = compute_relavance_score(pairs)
+    clarity_score, clarity_label = compute_clarity(ai_messages)
+    completeness_score, completeness_label = compute_completeness(pairs)
+    accuracy_score, accuracy_label = compute_accuracy_score(pairs)
+    empathy_score, empathy_label = compute_empathy_score(pairs)
+    fallback_freq = compute_fallback_frequency(ai_messages)
+    resolution_rate = compute_resolution_rate(pairs)
+    _, escalation_need = compute_escalation_need(sentement_count, completeness_score, accuracy_score, fallback_freq, resolution_rate)
+    response_time, response_label = compute_response_time(zip(user_messages, ai_messages))
+    user_satisfaction_score, user_satisfaction_label = compute_user_satisfaction(pairs)
+
+    analytics_data = {
+        "clarity": clarity_score,
+        "relevance": relevance_score,
+        "accuracy": accuracy_score,
+        "completeness": completeness_score,
+        "sentiment": sentiment,
+        "empathy": empathy_score,
+        "fallback_count": fallback_freq,
+        "resolution": bool(resolution_rate),
+        "escalation": bool(escalation_need),
+        "response_time": response_time,
+        "overall_score": user_satisfaction_score,
+    }
+    
+    api_response = {
+        "analytics": analytics_data,
+        "sentiment_score": sentement_count,
+        "sentiment_label": sentiment,
+        "relevance_score": relevance_score,
+        "relevance_label": relevance_label,
+        "clarity_score": clarity_score,
+        "clarity_label": clarity_label,
+        "completeness_score": completeness_score,
+        "completeness_label": completeness_label,
+        "accuracy_score": accuracy_score,
+        "accuracy_label": accuracy_label,
+        "empathy_score": empathy_score,
+        "empathy_label": empathy_label,
+        "fallback_frequency": fallback_freq,
+        "resolution_rate": resolution_rate,
+        "escalation_need": escalation_need,
+        "response_time": response_time,
+        "response_label": response_label,
+        "user_satisfaction_score": user_satisfaction_score,
+        "user_satisfaction_label": user_satisfaction_label
+    }
+    
+    return analytics_data, api_response
+

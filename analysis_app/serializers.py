@@ -1,6 +1,18 @@
 from rest_framework import serializers
 from django.db import transaction
-from .models import Conversation , Message
+from .models import Conversation, Message, ConversationAnalysis
+
+# Serializer for ConversationAnalysis
+class ConversationAnalysisSerializer(serializers.ModelSerializer):
+    conversation_id = serializers.IntegerField(source='conversation.id', read_only=True)
+    conversation_title = serializers.CharField(source='conversation.title', read_only=True)
+
+    class Meta:
+        model = ConversationAnalysis
+        fields = [
+            'id', 'conversation_id', 'conversation_title', 'clarity', 'relevance', 'accuracy', 'completeness',
+            'sentiment', 'empathy', 'fallback_count', 'resolution', 'escalation', 'response_time', 'overall_score', 'created_at'
+        ]
 
 class MessageSerializer(serializers.Serializer):
     sender = serializers.ChoiceField(choices=['user', 'ai'])
@@ -47,7 +59,3 @@ class ConversationSerializer(serializers.ModelSerializer):
         model = Conversation
         fields = ['id', 'title', 'created_at']
 
-class MessageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Message
-        fields = ['id', 'conversation', 'sender', 'message', 'timestamp']
