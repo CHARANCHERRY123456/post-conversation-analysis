@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-from .utils import analyze_sentiment , compute_relavance_score,compute_clarity,compute_completeness , compute_fallback_frequency
+from .utils import analyze_sentiment , compute_relavance_score,compute_clarity,compute_completeness , compute_fallback_frequency , compute_resolution_rate
 from .empathy_utils import compute_empathy_score
 from .gemini_utils import compute_accuracy_score
 from .models import Conversation , Message
@@ -55,7 +55,7 @@ def analyse_chat(request, conversation_id):
     accuracy_score , accuracy_label = compute_accuracy_score(pairs) # 5
     empathy_score , empathy_label = compute_empathy_score(pairs) # 6
     fallback_freq = compute_fallback_frequency(ai_messages) # 7
-    
+    resolution_rate = compute_resolution_rate(pairs) # 8
 
 
     return Response({
@@ -70,6 +70,8 @@ def analyse_chat(request, conversation_id):
         "accuracy_score" : accuracy_score,
         "accuracy_label" : accuracy_label,
         "empathy_score" : empathy_score,
-        "empathy_label" : empathy_label
+        "empathy_label" : empathy_label,
+        "fallback_frequency" : fallback_freq,
+        "resolution_rate" : resolution_rate
     })
 

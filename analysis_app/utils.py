@@ -139,3 +139,17 @@ def compute_fallback_frequency(ai_msgs):
     freq = np.mean(probs)
     lbl = "low" if freq <= 0.1 else "medium" if freq <= 0.3 else "high"
     return round(freq, 3), lbl
+
+def compute_resolution_rate(pairs):
+    if not pairs:return 0.0
+    clf = pipeline("text-classification", model="roberta-large-mnli")
+    embed = SentenceTransformer("all-MiniLM-L6-v2")
+    scores = []
+    for u,a in pairs:
+        u_vec,a_vec = embed.encode(u), embed.encode(a)
+        similarity = 1 - cosine(u_vec , a_vec)
+        prob = clf(f"User request: {u} AI reply: {a}. Does the AI resolve the user's request?")[0]['score']
+        combined = (0.5 * similarity) + (0.5 * prob)
+        scores.append(combined)
+    avg_score = sum(scores) / len(scores)
+    return round(avg_score,3)
