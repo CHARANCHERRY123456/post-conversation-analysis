@@ -3,6 +3,7 @@ from textblob import TextBlob
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
 import textstat
+from datetime import datetime
 from scipy.spatial.distance import cosine
 import numpy as np
 import spacy
@@ -153,3 +154,25 @@ def compute_resolution_rate(pairs):
         scores.append(combined)
     avg_score = sum(scores) / len(scores)
     return round(avg_score,3)
+
+def compute_escalation_need(sentiment_score, completeness_score, accuracy_score, fallback_freq, resolution_score):
+    neg = 1 - sentiment_score
+    uncomplete = 1 - completeness_score
+    inaccurate = 1 - accuracy_score
+    unresolved = 1 - resolution_score
+    score = np.mean([neg, uncomplete, inaccurate, fallback_freq, unresolved])
+    lbl = "low" if score <= 0.3 else "medium" if score <= 0.6 else "high"
+    return round(score, 3), lbl
+
+def compute_response_time(pairs):
+    if not pairs: return 0.0, "no data"
+    diffs = []
+    for u, a in pairs:
+        try:
+            t1, t2 = datetime.fromisoformat(u["timestamp"]), datetime.fromisoformat(a["timestamp"])
+            diffs.append((t2 - t1).total_seconds())
+        except: continue
+    avg = np.mean(diffs) if diffs else 0.0
+    lbl = "fast" if avg <= 2 else "moderate" if avg <= 5 else "slow"
+    return round(avg, 2), lbl
+

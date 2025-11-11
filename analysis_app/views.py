@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-from .utils import analyze_sentiment , compute_relavance_score,compute_clarity,compute_completeness , compute_fallback_frequency , compute_resolution_rate
+from .utils import analyze_sentiment , compute_relavance_score,compute_clarity,compute_completeness , compute_fallback_frequency , compute_resolution_rate , compute_escalation_need , compute_response_time
 from .empathy_utils import compute_empathy_score
 from .gemini_utils import compute_accuracy_score
 from .models import Conversation , Message
@@ -47,7 +47,7 @@ def analyse_chat(request, conversation_id):
     
     # Convert pairs to list so it can be reused across multiple function calls
     pairs = list(zip([msg["message"] for msg in user_messages], [msg["message"] for msg in ai_messages]))
-    
+    # give the (message , message)
     sentement_count , sentiment = analyze_sentiment(user_messages) # 1
     relevance_score , relevance_label = compute_relavance_score(pairs) # 2
     clarity_score , clarity_label = compute_clarity(ai_messages) # 3
@@ -56,7 +56,8 @@ def analyse_chat(request, conversation_id):
     empathy_score , empathy_label = compute_empathy_score(pairs) # 6
     fallback_freq = compute_fallback_frequency(ai_messages) # 7
     resolution_rate = compute_resolution_rate(pairs) # 8
-
+    _ , escalation_need = compute_escalation_need(sentement_count, completeness_score, accuracy_score, fallback_freq, resolution_rate) # 9
+    response_time , response_label = compute_response_time(zip(user_messages , ai_messages)) # 10
 
     return Response({
         "sentiment_score" : sentement_count,
@@ -72,6 +73,9 @@ def analyse_chat(request, conversation_id):
         "empathy_score" : empathy_score,
         "empathy_label" : empathy_label,
         "fallback_frequency" : fallback_freq,
-        "resolution_rate" : resolution_rate
+        "resolution_rate" : resolution_rate,
+        "escalation_need" : escalation_need,
+        "response_time" : response_time,
+        "response_label" : response_label
     })
 
