@@ -21,25 +21,21 @@ def compute_empathy_score(dialogue_pairs: List[Tuple[str, str]]) -> tuple[float,
         if not user_msg.strip() or not ai_msg.strip():
             continue
 
-        # Predict user's emotion
         user_inputs = _emotion_tokenizer(user_msg, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
             user_outputs = _emotion_model(**user_inputs)
         user_probs = torch.softmax(user_outputs.logits, dim=1)[0]
         user_emotion_conf = float(torch.max(user_probs).item())
 
-        # Predict AI's emotion alignment with user
         ai_inputs = _emotion_tokenizer(ai_msg, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
             ai_outputs = _emotion_model(**ai_inputs)
         ai_probs = torch.softmax(ai_outputs.logits, dim=1)[0]
         
-        # Calculate emotion alignment between user and AI
         emotion_similarity = float(torch.nn.functional.cosine_similarity(
             user_probs.unsqueeze(0), ai_probs.unsqueeze(0)
         ).item())
         
-        # Combine confidence and alignment
         empathy_score = (0.5 * emotion_similarity) + (0.5 * user_emotion_conf)
         empathy_scores.append(empathy_score)
 

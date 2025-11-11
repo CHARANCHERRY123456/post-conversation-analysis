@@ -1,4 +1,3 @@
-# All imports at the top
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
 from transformers import pipeline
@@ -109,7 +108,6 @@ def compute_completeness(pairs):
         ratio = ai_sentences / user_sentences
         return min(ratio, 1.0)
     
-    # Convert pairs to list if it's an iterator
     pairs_list = list(pairs) if not isinstance(pairs, list) else pairs
     
     if not pairs_list:
@@ -138,7 +136,6 @@ def compute_fallback_frequency(ai_msgs):
     if not ai_msgs: 
         return 0.0, "low"
     
-    # Use simple keyword-based detection instead of heavy model
     fallback_keywords = ['sorry', 'apologize', 'not sure', 'don\'t know', 'unclear', 'uncertain', 'maybe', 'perhaps', 'might']
     
     fallback_count = 0
@@ -155,7 +152,6 @@ def compute_resolution_rate(pairs):
     if not pairs:
         return 0.0
     
-    # Simple semantic similarity based resolution
     embed = SentenceTransformer("all-MiniLM-L6-v2")
     scores = []
     for u, a in pairs:
@@ -191,18 +187,15 @@ def compute_user_satisfaction(pairs):
     if not pairs: 
         return 0.0, "low"
     
-    # Use sentiment analysis as a proxy for satisfaction
     analyzer = SentimentIntensityAnalyzer()
     satisfaction_scores = []
     
     for user_msg, ai_msg in pairs:
-        # Analyze sentiment of the conversation flow
         user_sentiment = analyzer.polarity_scores(user_msg)['compound']
         ai_sentiment = analyzer.polarity_scores(ai_msg)['compound']
         
-        # If AI response is more positive than user message, that's good
         response_quality = (ai_sentiment + 1) / 2  # Normalize to 0-1
-        conversation_flow = 1 - abs(user_sentiment - ai_sentiment)  # Alignment
+        conversation_flow = 1 - abs(user_sentiment - ai_sentiment)
         
         satisfaction = (0.6 * response_quality) + (0.4 * conversation_flow)
         satisfaction_scores.append(satisfaction)
@@ -211,7 +204,6 @@ def compute_user_satisfaction(pairs):
     lbl = "high" if score >= 0.75 else "medium" if score >= 0.45 else "low"
     return round(score, 3), lbl
 
-# Utility to compute all analytics for a conversation
 def get_conversation_analysis(conversation):
     from .models import Message
     from .gemini_utils import compute_accuracy_score
