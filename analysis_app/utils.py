@@ -176,3 +176,11 @@ def compute_response_time(pairs):
     lbl = "fast" if avg <= 2 else "moderate" if avg <= 5 else "slow"
     return round(avg, 2), lbl
 
+def compute_user_satisfaction(pairs):
+    if not pairs: return 0.0, "low"
+    text = " ".join([f"User: {u} AI: {a}" for u, a in pairs])
+    clf = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+    result = clf(text, candidate_labels=["user is satisfied", "user is unsatisfied"])
+    score = result["scores"][0]
+    lbl = "high" if score >= 0.75 else "medium" if score >= 0.45 else "low"
+    return round(score, 3), lbl

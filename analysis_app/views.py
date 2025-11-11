@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-from .utils import analyze_sentiment , compute_relavance_score,compute_clarity,compute_completeness , compute_fallback_frequency , compute_resolution_rate , compute_escalation_need , compute_response_time
+from .utils import analyze_sentiment , compute_relavance_score,compute_clarity,compute_completeness , compute_fallback_frequency , compute_resolution_rate , compute_escalation_need , compute_response_time , compute_user_satisfaction
 from .empathy_utils import compute_empathy_score
 from .gemini_utils import compute_accuracy_score
 from .models import Conversation , Message
@@ -58,6 +58,7 @@ def analyse_chat(request, conversation_id):
     resolution_rate = compute_resolution_rate(pairs) # 8
     _ , escalation_need = compute_escalation_need(sentement_count, completeness_score, accuracy_score, fallback_freq, resolution_rate) # 9
     response_time , response_label = compute_response_time(zip(user_messages , ai_messages)) # 10
+    user_satisfaction_score , user_satisfaction_label = compute_user_satisfaction(pairs) # 11
 
     return Response({
         "sentiment_score" : sentement_count,
@@ -76,6 +77,8 @@ def analyse_chat(request, conversation_id):
         "resolution_rate" : resolution_rate,
         "escalation_need" : escalation_need,
         "response_time" : response_time,
-        "response_label" : response_label
+        "response_label" : response_label,
+        "user_satisfaction_score" : user_satisfaction_score,
+        "user_satisfaction_label" : user_satisfaction_label
     })
 
