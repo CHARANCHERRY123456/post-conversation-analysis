@@ -5,13 +5,9 @@ import numpy as np
 
 
 _EMOTION_MODEL_NAME = "j-hartmann/emotion-english-distilroberta-base"
-_EMPATHY_MODEL_NAME = "bhadresh-savani/empathetic-dialogues-roberta"
 
 _emotion_tokenizer = AutoTokenizer.from_pretrained(_EMOTION_MODEL_NAME)
 _emotion_model = AutoModelForSequenceClassification.from_pretrained(_EMOTION_MODEL_NAME)
-
-_empathy_tokenizer = AutoTokenizer.from_pretrained(_EMPATHY_MODEL_NAME)
-_empathy_model = AutoModelForSequenceClassification.from_pretrained(_EMPATHY_MODEL_NAME)
 
 
 def compute_empathy_score(dialogue_pairs: List[Tuple[str, str]]) -> tuple[float, str]:
@@ -25,32 +21,32 @@ def compute_empathy_score(dialogue_pairs: List[Tuple[str, str]]) -> tuple[float,
         if not user_msg.strip() or not ai_msg.strip():
             continue
 
-        # 1️ Predict user's emotion distribution
+        # Predict user's emotion
         user_inputs = _emotion_tokenizer(user_msg, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
             user_outputs = _emotion_model(**user_inputs)
         user_probs = torch.softmax(user_outputs.logits, dim=1)[0]
-        user_emotion_idx = int(torch.argmax(user_probs))
-        user_emotion_conf = user_probs[user_emotion_idx].item()
+        user_emotion_conf = float(torch.max(user_probs).item())
 
-        # Predict AI's empathy level 
-        combined_text = f"User: {user_msg} AI: {ai_msg}"
-        empathy_inputs = _empathy_tokenizer(combined_text, return_tensors="pt", truncation=True, max_length=512)
+        # Predict AI's emotion alignment with user
+        ai_inputs = _emotion_tokenizer(ai_msg, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
-            empathy_outputs = _empathy_model(**empathy_inputs)
-        empathy_probs = torch.softmax(empathy_outputs.logits, dim=1)[0]
+            ai_outputs = _emotion_model(**ai_inputs)
+        ai_probs = torch.softmax(ai_outputs.logits, dim=1)[0]
         
-        ai_empathy_prob = empathy_probs[1].item() if empathy_probs.shape[-1] > 1 else empathy_probs[0].item()
-
-        alignment = 1.0 - abs(0.5 - user_emotion_conf)  
-
-        final_score = (0.6 * ai_empathy_prob) + (0.4 * alignment)
-        empathy_scores.append(final_score)
+        # Calculate emotion alignment between user and AI
+        emotion_similarity = float(torch.nn.functional.cosine_similarity(
+            user_probs.unsqueeze(0), ai_probs.unsqueeze(0)
+        ).item())
+        
+        # Combine confidence and alignment
+        empathy_score = (0.5 * emotion_similarity) + (0.5 * user_emotion_conf)
+        empathy_scores.append(empathy_score)
 
     if not empathy_scores:
         return 0.0, "low"
 
-    avg_score = float(np.mean(empathy_scores))
+    avg_score = sum(empathy_scores) / len(empathy_scores)
 
     label = "low"
     if avg_score >= 0.75:

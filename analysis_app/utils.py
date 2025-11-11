@@ -67,7 +67,7 @@ def compute_clarity(aimessages):
             continue
         clarity_score = textstat.flesch_reading_ease(text)
         claritites.append(_normalize(clarity_score,-100,121))
-    avg_clarity =  np.mean(claritites) if claritites else 0
+    avg_clarity = sum(claritites) / len(claritites) if claritites else 0
     label = "difficult"
     if avg_clarity >= 60:
         label = "clear"
@@ -135,33 +135,43 @@ def compute_completeness(pairs):
     return avg_completeness , label
 
 def compute_fallback_frequency(ai_msgs):
-    if not ai_msgs: return 0.0, "low"
-    clf = pipeline("text-classification", model="roberta-large-mnli")
-    probs = [clf(f"This message shows uncertainty: {m}")[0]['score'] for m in ai_msgs]
-    freq = np.mean(probs)
+    if not ai_msgs: 
+        return 0.0, "low"
+    
+    # Use simple keyword-based detection instead of heavy model
+    fallback_keywords = ['sorry', 'apologize', 'not sure', 'don\'t know', 'unclear', 'uncertain', 'maybe', 'perhaps', 'might']
+    
+    fallback_count = 0
+    for msg in ai_msgs:
+        text = msg.get('message', '').lower()
+        if any(keyword in text for keyword in fallback_keywords):
+            fallback_count += 1
+    
+    freq = fallback_count / len(ai_msgs) if ai_msgs else 0.0
     lbl = "low" if freq <= 0.1 else "medium" if freq <= 0.3 else "high"
     return round(freq, 3), lbl
 
 def compute_resolution_rate(pairs):
-    if not pairs:return 0.0
-    clf = pipeline("text-classification", model="roberta-large-mnli")
+    if not pairs:
+        return 0.0
+    
+    # Simple semantic similarity based resolution
     embed = SentenceTransformer("all-MiniLM-L6-v2")
     scores = []
-    for u,a in pairs:
-        u_vec,a_vec = embed.encode(u), embed.encode(a)
-        similarity = 1 - cosine(u_vec , a_vec)
-        prob = clf(f"User request: {u} AI reply: {a}. Does the AI resolve the user's request?")[0]['score']
-        combined = (0.5 * similarity) + (0.5 * prob)
-        scores.append(combined)
+    for u, a in pairs:
+        u_vec, a_vec = embed.encode(u), embed.encode(a)
+        similarity = 1 - cosine(u_vec, a_vec)
+        scores.append(similarity)
+    
     avg_score = sum(scores) / len(scores)
-    return round(avg_score,3)
+    return round(avg_score, 3)
 
 def compute_escalation_need(sentiment_score, completeness_score, accuracy_score, fallback_freq, resolution_score):
     neg = 1 - sentiment_score
     uncomplete = 1 - completeness_score
     inaccurate = 1 - accuracy_score
     unresolved = 1 - resolution_score
-    score = np.mean([neg, uncomplete, inaccurate, fallback_freq, unresolved])
+    score = (neg + uncomplete + inaccurate + fallback_freq + unresolved) / 5
     lbl = "low" if score <= 0.3 else "medium" if score <= 0.6 else "high"
     return round(score, 3), lbl
 
@@ -173,16 +183,31 @@ def compute_response_time(pairs):
             t1, t2 = datetime.fromisoformat(u["timestamp"]), datetime.fromisoformat(a["timestamp"])
             diffs.append((t2 - t1).total_seconds())
         except: continue
-    avg = np.mean(diffs) if diffs else 0.0
+    avg = sum(diffs) / len(diffs) if diffs else 0.0
     lbl = "fast" if avg <= 2 else "moderate" if avg <= 5 else "slow"
     return round(avg, 2), lbl
 
 def compute_user_satisfaction(pairs):
-    if not pairs: return 0.0, "low"
-    text = " ".join([f"User: {u} AI: {a}" for u, a in pairs])
-    clf = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-    result = clf(text, candidate_labels=["user is satisfied", "user is unsatisfied"])
-    score = result["scores"][0]
+    if not pairs: 
+        return 0.0, "low"
+    
+    # Use sentiment analysis as a proxy for satisfaction
+    analyzer = SentimentIntensityAnalyzer()
+    satisfaction_scores = []
+    
+    for user_msg, ai_msg in pairs:
+        # Analyze sentiment of the conversation flow
+        user_sentiment = analyzer.polarity_scores(user_msg)['compound']
+        ai_sentiment = analyzer.polarity_scores(ai_msg)['compound']
+        
+        # If AI response is more positive than user message, that's good
+        response_quality = (ai_sentiment + 1) / 2  # Normalize to 0-1
+        conversation_flow = 1 - abs(user_sentiment - ai_sentiment)  # Alignment
+        
+        satisfaction = (0.6 * response_quality) + (0.4 * conversation_flow)
+        satisfaction_scores.append(satisfaction)
+    
+    score = sum(satisfaction_scores) / len(satisfaction_scores)
     lbl = "high" if score >= 0.75 else "medium" if score >= 0.45 else "low"
     return round(score, 3), lbl
 
@@ -207,7 +232,7 @@ def get_conversation_analysis(conversation):
     completeness_score, completeness_label = compute_completeness(pairs)
     accuracy_score, accuracy_label = compute_accuracy_score(pairs)
     empathy_score, empathy_label = compute_empathy_score(pairs)
-    fallback_freq = compute_fallback_frequency(ai_messages)
+    fallback_freq, fallback_label = compute_fallback_frequency(ai_messages)
     resolution_rate = compute_resolution_rate(pairs)
     _, escalation_need = compute_escalation_need(sentement_count, completeness_score, accuracy_score, fallback_freq, resolution_rate)
     response_time, response_label = compute_response_time(zip(user_messages, ai_messages))
@@ -242,6 +267,7 @@ def get_conversation_analysis(conversation):
         "empathy_score": empathy_score,
         "empathy_label": empathy_label,
         "fallback_frequency": fallback_freq,
+        "fallback_label": fallback_label,
         "resolution_rate": resolution_rate,
         "escalation_need": escalation_need,
         "response_time": response_time,
