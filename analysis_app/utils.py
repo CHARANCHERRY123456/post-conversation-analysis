@@ -1,5 +1,6 @@
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
+from transformers import pipeline
 from sentence_transformers import SentenceTransformer
 import textstat
 from scipy.spatial.distance import cosine
@@ -130,3 +131,11 @@ def compute_completeness(pairs):
     elif avg_completeness >= 0.4:
         label = "partial"
     return avg_completeness , label
+
+def compute_fallback_frequency(ai_msgs):
+    if not ai_msgs: return 0.0, "low"
+    clf = pipeline("text-classification", model="roberta-large-mnli")
+    probs = [clf(f"This message shows uncertainty: {m}")[0]['score'] for m in ai_msgs]
+    freq = np.mean(probs)
+    lbl = "low" if freq <= 0.1 else "medium" if freq <= 0.3 else "high"
+    return round(freq, 3), lbl

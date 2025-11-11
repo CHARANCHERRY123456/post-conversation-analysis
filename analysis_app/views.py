@@ -2,7 +2,8 @@ from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-from .utils import analyze_sentiment , compute_relavance_score,compute_clarity,compute_completeness
+from .utils import analyze_sentiment , compute_relavance_score,compute_clarity,compute_completeness , compute_fallback_frequency
+from .empathy_utils import compute_empathy_score
 from .gemini_utils import compute_accuracy_score
 from .models import Conversation , Message
 import json
@@ -47,11 +48,15 @@ def analyse_chat(request, conversation_id):
     # Convert pairs to list so it can be reused across multiple function calls
     pairs = list(zip([msg["message"] for msg in user_messages], [msg["message"] for msg in ai_messages]))
     
-    sentement_count , sentiment = analyze_sentiment(user_messages)
-    relevance_score , relevance_label = compute_relavance_score(pairs)
-    clarity_score , clarity_label = compute_clarity(ai_messages)
-    completeness_score , completeness_label = compute_completeness(pairs)
-    accuracy_score , accuracy_label = compute_accuracy_score(pairs)
+    sentement_count , sentiment = analyze_sentiment(user_messages) # 1
+    relevance_score , relevance_label = compute_relavance_score(pairs) # 2
+    clarity_score , clarity_label = compute_clarity(ai_messages) # 3
+    completeness_score , completeness_label = compute_completeness(pairs) # 4
+    accuracy_score , accuracy_label = compute_accuracy_score(pairs) # 5
+    empathy_score , empathy_label = compute_empathy_score(pairs) # 6
+    fallback_freq = compute_fallback_frequency(ai_messages) # 7
+    
+
 
     return Response({
         "sentiment_score" : sentement_count,
@@ -63,6 +68,8 @@ def analyse_chat(request, conversation_id):
         "completeness_score" : completeness_score,
         "completeness_label" : completeness_label,
         "accuracy_score" : accuracy_score,
-        "accuracy_label" : accuracy_label
+        "accuracy_label" : accuracy_label,
+        "empathy_score" : empathy_score,
+        "empathy_label" : empathy_label
     })
 
